@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.1/css/jquery.dataTables.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.11.1/js/jquery.dataTables.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> <!-- Add Plotly.js library -->
+
+  <title>Salary Database</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    form {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #results {
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    .no-results {
+      text-align: center;
+      font-weight: bold;
+    }
+    th.sorting_asc,
+    th.sorting_desc {
+      background-color: #4CAF50;
+      color: white;
+    }
+    /* Additional styles for the analytics section */
+    #analytics {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #salaryHistogram {
+      width: 600px;
+      margin: 0 auto;
+    }
+    button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+    .horizontal-form .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.horizontal-form .form-column {
+  flex: 1;
+  padding-right: 10px;
+}
+
+.horizontal-form .form-column:last-child {
+  padding-right: 0;
+}
+
+@media (max-width: 600px) {
+  .horizontal-form .form-column {
+    flex: 100%;
+    padding-right: 0;
+  }
+}
+
+
+
+  </style>
+</head>
+<body>
+  <h1>USA Salary Database</h1>
+  <form id="searchForm" class="horizontal-form">
+  <div class="form-row">
+    <div class="form-column">
+      <label for="employer">Employer:</label>
+      <input type="text" id="employer" name="employer">
+    </div>
+    <div class="form-column">
+      <label for="year">Year:</label>
+      <select id="year" name="year">
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+        <option value="2021">2021</option>
+        <option value="2020">2020</option>
+        <option value="2019">2019</option>
+        <option value="2018">2018</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-column">
+      <label for="jobTitle">Job Title:</label>
+      <input type="text" id="jobTitle" name="jobTitle">
+    </div>
+    <div class="form-column">
+      <label for="state">State:</label>
+      <select id="state" name="state"></select>
+    </div>
+  </div>
+<!--  <div class="form-row">-->
+<!--    <div class="form-column">-->
+<!--      <label for="city">City:</label>-->
+<!--      <select id="city" name="city"></select>-->
+<!--    </div>-->
+<!--  </div>-->
+  <div class="form-row">
+    <div class="form-column">
+      <button type="submit">Search</button>
+    </div>
+    <div class="form-column">
+      <button id="analyticsButton" type="button">Analytics</button>
+    </div>
+  </div>
+</form>
+  <div id="analytics" style="display: none;"> <!-- Add container for analytics section -->
+    <h2>Salary Histogram</h2>
+    <div id="salaryHistogram"></div> <!-- Add container for salary histogram -->
+  </div>
+  <div id="results"></div>
+
+
+  <script>
+    // Populate the "State" drop-down button with options
+    const states = [
+      'All (USA)','Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida',
+      'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
+      'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+      'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma',
+      'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah',
+      'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+    ];
+
+    const stateDropdown = document.getElementById('state');
+
+    states.forEach(function(state) {
+      const option = document.createElement('option');
+      option.value = state.toLowerCase();
+      option.textContent = state;
+      stateDropdown.appendChild(option);
+    });
+
+    // Populate the "City" drop-down button with options
+    // const cities = [
+    //   '', 'San Francisco', 'Boston', 'Seattle', 'Columbus'
+    // ];
+
+    // const cityDropdown = document.getElementById('city');
+
+    // cities.forEach(function(city) {
+    //   const option = document.createElement('option');
+    //   option.value = city.toLowerCase();
+    //   option.textContent = city;
+    //   cityDropdown.appendChild(option);
+    // });
+
+
+    function displayResults(results) {
+      const resultsContainer = document.getElementById('results');
+      resultsContainer.innerHTML = ''; // Clear previous results
+
+      if (results.length > 0) {
+        const table = document.createElement('table');
+        table.id = 'resultsTable'; // Assign an ID for DataTables initialization
+
+        // Create table header
+        const tableHeader = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const headerColumns = ['Employer', 'Job Title','Level', 'Salary','Unit', 'City', 'State'];
+        headerColumns.forEach(function(columnText) {
+          const th = document.createElement('th');
+          th.textContent = columnText;
+          headerRow.appendChild(th);
+        });
+        tableHeader.appendChild(headerRow);
+        table.appendChild(tableHeader);
+
+        // Create table body
+        const tableBody = document.createElement('tbody');
+        results.forEach(function(job) {
+          const row = document.createElement('tr');
+          Object.values(job).forEach(function(value) {
+            const td = document.createElement('td');
+            td.textContent = value;
+            row.appendChild(td);
+          });
+          tableBody.appendChild(row);
+        });
+        table.appendChild(tableBody);
+
+        resultsContainer.appendChild(table);
+
+        // Initialize DataTables
+        $(table).DataTable();
+      } else {
+        resultsContainer.innerHTML = '<p class="no-results">No results found.</p>';
+      }
+    }
+
+    // Handle form submission
+    document.getElementById('searchForm').addEventListener('submit', function(event) {
+      event.preventDefault(); // Prevent page refresh
+
+      // Get form values
+      const employer = document.getElementById('employer').value;
+      const year = document.getElementById('year').value;
+      const jobTitle = document.getElementById('jobTitle').value;
+      const state = document.getElementById('state').value;
+      // const city = document.getElementById('city').value;
+
+      // Perform AJAX request to server
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', `http://127.0.0.1:5000/search?employer=${employer}&year=${year}&jobTitle=${jobTitle}&state=${state}`);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          const results = JSON.parse(xhr.responseText);
+          displayResults(results);
+        } else {
+          console.error('Request failed. Status:', xhr.status);
+        }
+      };
+      xhr.send();
+    });
+
+    // Function to display the salary histogram
+    function displayHistogram(data) {
+
+      const salaryValues = data;
+      console.log(salaryValues)
+      const salaryBins = [];
+      for (let i = 0; i < 200000; i += 20000) {
+        salaryBins.push(i);
+      }
+
+      const salaryHistogramData = [
+  {
+    x: salaryValues,
+    type: 'histogram',
+    marker: {
+      color: 'rgba(58, 127, 197, 0.7)' ,
+       line: {
+      color:  "rgba(255, 100, 102, 1)",
+      width: 2
+    }
+    },
+     opacity: 0.9,
+    hovertemplate: 'Count: %{y}<extra></extra>' // Display count on hover
+  }
+];
+
+const salaryHistogramLayout = {
+  title: 'Salary Histogram',
+  xaxis: {
+    bargap: 2.5,
+    title: 'Salary Range',
+    autorange: true, // Enable auto scaling
+    dtick: 10000
+  },
+  yaxis: {
+    title: 'Frequency',
+    bargap: 0.25
+  },
+  showlegend: false // Hide legend if not needed
+};
+
+      Plotly.newPlot('salaryHistogram', salaryHistogramData, salaryHistogramLayout);
+    }
+
+    // Event listener for the Analytics button
+    document.getElementById('analyticsButton').addEventListener('click', function () {
+
+      const employer = document.getElementById('employer').value;
+      const year = document.getElementById('year').value;
+      const jobTitle = document.getElementById('jobTitle').value;
+      const state = document.getElementById('state').value;
+      // const city = document.getElementById('city').value;
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', `http://127.0.0.1:5000/analytics?employer=${employer}&year=${year}&jobTitle=${jobTitle}&state=${state}`);// Update the URL to your analytics endpoint
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          displayHistogram(data);
+
+          document.getElementById('analytics').style.display = 'block'; // Show the analytics section
+        } else {
+          console.error('Request failed. Status:', xhr.status);
+        }
+      };
+      xhr.send();
+    });
+  </script>
+</body>
+</html>
